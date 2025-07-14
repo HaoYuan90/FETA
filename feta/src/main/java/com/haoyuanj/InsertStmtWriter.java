@@ -2,7 +2,6 @@ package com.haoyuanj;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -14,12 +13,12 @@ public class InsertStmtWriter {
 
   public static void write(BufferedWriter br, List<IntervalMeteringData> data) throws IOException {
     for (IntervalMeteringData d : data) {
-      br.write(createQuery(d));
+      br.write(createInsertStmt(d));
       br.newLine();
     }
   }
 
-  private static String createQuery(IntervalMeteringData data) {
+  private static String createInsertStmt(IntervalMeteringData data) {
     StringBuilder sb = new StringBuilder();
     sb.append("INSERT INTO meter_readings (nmi, timestamp, consumption) VALUES ");
     // TODO: Expect timezone from data, use UTC for this take home.
