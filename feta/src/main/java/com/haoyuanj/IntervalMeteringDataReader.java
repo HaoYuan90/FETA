@@ -9,18 +9,29 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IntervalMeteringDataReader {
+public class IntervalMeteringDataReader implements Closeable {
 
   private static final DateTimeFormatter YYYYMMDD = DateTimeFormatter.ofPattern("yyyyMMdd");
   private static final int MINUTES_IN_DAY = 1440;
 
   private record NmiContext(String nmi, int intervalMinutes, String uom) {}
 
-  public static List<IntervalMeteringData> read(InputStream in) throws IOException {
-    List<IntervalMeteringData> data = new ArrayList<>();
-    try (CSVReader r = new CSVReader(new BufferedReader(new InputStreamReader(in)))) {
-      String[] cells = r.readNext();
-      NmiContext context = null;
+  private final CSVReader r;
+  private NmiContext context;
+  private boolean hasNext;
+
+  public IntervalMeteringDataReader(InputStream in) {
+    this.r = new CSVReader(new BufferedReader(new InputStreamReader(in)));
+    this.context = null;
+    this.hasNext = true;
+  }
+
+  public IntervalMeteringData readNext() throws IOException {
+    if (!this.hasNext) {
+      return null;
+    }
+    try {
+      String[] cells = this.r.readNext();
       while (cells != null) {
         int indicator = Integer.parseInt(cells[0]);
         switch (indicator) {
@@ -28,15 +39,15 @@ public class IntervalMeteringDataReader {
             // Ignore header
             break;
           case 200:
-            context = new NmiContext(cells[1], Integer.parseInt(cells[8]), cells[7].toLowerCase());
+            this.context =
+                new NmiContext(cells[1], Integer.parseInt(cells[8]), cells[7].toLowerCase());
             break;
           case 300:
             // Interval data
-            if (context == null) {
+            if (this.context == null) {
               throw new IllegalArgumentException("NMI data record not found before interval data.");
             }
-            data.add(getIntervalMeteringData(context, cells));
-            break;
+            return getIntervalMeteringData(this.context, cells);
           case 400:
             // Ignore interval event
             break;
@@ -48,17 +59,33 @@ public class IntervalMeteringDataReader {
             break;
           default:
         }
-        cells = r.readNext();
+        cells = this.r.readNext();
       }
     } catch (CsvValidationException e) {
       throw new IllegalArgumentException(e);
     }
+    this.hasNext = false;
+    return null;
+  }
+
+  public List<IntervalMeteringData> readAll() throws IOException {
+    List<IntervalMeteringData> data = new ArrayList<>();
+    IntervalMeteringData d = this.readNext();
+    while (d != null) {
+      data.add(d);
+      d = this.readNext();
+    }
     return data;
+  }
+
+  @Override
+  public void close() throws IOException {
+    this.r.close();
   }
 
   // Returns an instance of IntervalMeteringData from input NMI and cells from a record of type
   // "300"
-  private static IntervalMeteringData getIntervalMeteringData(NmiContext context, String[] cells) {
+  private IntervalMeteringData getIntervalMeteringData(NmiContext context, String[] cells) {
     LocalDate intervalDate = LocalDate.parse(cells[1], YYYYMMDD);
     double[] consumptions = new double[MINUTES_IN_DAY / context.intervalMinutes()];
     for (int i = 0; i < consumptions.length; i++) {
@@ -68,7 +95,7 @@ public class IntervalMeteringDataReader {
         context.nmi(), intervalDate, context.intervalMinutes, consumptions);
   }
 
-  private static double consumptionToWh(String uom, double consumption) {
+  private double consumptionToWh(String uom, double consumption) {
     switch (uom) {
       case "mwh":
         return consumption * 1_000_000;

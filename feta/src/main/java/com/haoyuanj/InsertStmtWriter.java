@@ -12,12 +12,10 @@ public class InsertStmtWriter {
   private static final DateTimeFormatter DT_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-  public static void write(Writer writer, List<IntervalMeteringData> data) throws IOException {
-    try (BufferedWriter br = new BufferedWriter(writer)) {
-      for (IntervalMeteringData d : data) {
-        br.write(createQuery(d));
-        br.newLine();
-      }
+  public static void write(BufferedWriter br, List<IntervalMeteringData> data) throws IOException {
+    for (IntervalMeteringData d : data) {
+      br.write(createQuery(d));
+      br.newLine();
     }
   }
 

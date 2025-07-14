@@ -2,6 +2,7 @@ package com.haoyuanj;
 
 import junit.framework.*;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -14,18 +15,21 @@ public class InsertStmtWriterTest extends TestCase {
 
   public void testDataSet1IsConvertedIntoInsertStatementsMatchingGolden() throws Exception {
     try (InputStream in = getTestInputSteam("test_1.csv");
-        StringWriter out = new StringWriter()) {
-      List<IntervalMeteringData> got = IntervalMeteringDataReader.read(in);
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(in);
+        StringWriter sr = new StringWriter();
+        BufferedWriter out = new BufferedWriter(sr)) {
+      List<IntervalMeteringData> got = r.readAll();
       InsertStmtWriter.write(out, got);
-      assertStmtEqualsGolden(out.toString(), "golden_1.sql");
+      out.flush();
+      assertStmtEqualsGolden(sr.toString(), "golden_1.sql");
     }
   }
 
   private void assertStmtEqualsGolden(String stmt, String goldenFile)
       throws URISyntaxException, IOException {
     assertEquals(
-        stmt,
-        Files.readString(Paths.get(getClass().getClassLoader().getResource(goldenFile).toURI())));
+        Files.readString(Paths.get(getClass().getClassLoader().getResource(goldenFile).toURI())),
+        stmt);
   }
 
   private InputStream getTestInputSteam(String filePath) {

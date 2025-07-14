@@ -72,8 +72,6 @@ job where each worker reads a whole file. This approach was discarded for the fo
   insert.
 - [**Feature**] Input data can use more validation, for example, assert each type of data rows have the right number of
   columns.
-- [**Performance**] This implementation checkpoints the data in memory (list of IntervalMeteringData) instead of
-  operating as a streaming processor. The job can run out of heap for really large files.
 
 ### What is the rationale for the design choices that you have made?
 

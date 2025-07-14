@@ -4,6 +4,7 @@ import junit.framework.*;
 
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -12,9 +13,10 @@ public class IntervalMeteringDataReaderTest extends TestCase {
   private static final double EQUALITY_EPSILON = 0.000001d;
 
   public void testFileIsParsedCorrectly() throws Exception {
-    try (InputStream s = getTestInputSteam("test_1.csv")) {
+    try (InputStream s = getTestInputSteam("test_1.csv");
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(s)) {
       assertNotNull(s);
-      List<IntervalMeteringData> got = IntervalMeteringDataReader.read(s);
+      List<IntervalMeteringData> got = r.readAll();
       List<IntervalMeteringData> want =
           Arrays.asList(
               new IntervalMeteringData[] {
@@ -113,9 +115,10 @@ public class IntervalMeteringDataReaderTest extends TestCase {
   }
 
   public void testFileWithOneRecordIsParsedCorrectly() throws Exception {
-    try (InputStream s = getTestInputSteam("test_2.csv")) {
+    try (InputStream s = getTestInputSteam("test_2.csv");
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(s)) {
       assertNotNull(s);
-      List<IntervalMeteringData> got = IntervalMeteringDataReader.read(s);
+      List<IntervalMeteringData> got = r.readAll();
       List<IntervalMeteringData> want =
           Arrays.asList(
               new IntervalMeteringData[] {
@@ -143,10 +146,43 @@ public class IntervalMeteringDataReaderTest extends TestCase {
   }
 
   public void testFileWithoutIntervalDataIsParsedCorrectly() throws Exception {
-    try (InputStream s = getTestInputSteam("test_3.csv")) {
+    try (InputStream s = getTestInputSteam("test_3.csv");
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(s)) {
       assertNotNull(s);
-      List<IntervalMeteringData> data = IntervalMeteringDataReader.read(s);
+      List<IntervalMeteringData> data = r.readAll();
       assertTrue(data.isEmpty());
+    }
+  }
+
+  public void testFileIsParsedCorrectlyOneEntryByOneEntry() throws Exception {
+    List<IntervalMeteringData> want = new ArrayList<>();
+    List<IntervalMeteringData> got = new ArrayList<>();
+    try (InputStream s = getTestInputSteam("test_1.csv");
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(s)) {
+      want.addAll(r.readAll());
+    }
+    try (InputStream s = getTestInputSteam("test_1.csv");
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(s)) {
+      IntervalMeteringData d = r.readNext();
+      while (d != null) {
+        got.add(d);
+        d = r.readNext();
+      }
+    }
+    assertEquals(got.size(), 7);
+    for (int i = 0; i < want.size(); i++) {
+      assertTrue(
+          "\ngot: " + got.get(i) + "\n" + "want: " + want.get(i),
+          got.get(i).equalsApprox(want.get(i), EQUALITY_EPSILON));
+    }
+  }
+
+  public void testReadNextDoesNotBreakOnEmptyFile() throws Exception {
+    try (InputStream s = getTestInputSteam("test_3.csv");
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(s)) {
+      assertNull(r.readNext());
+      assertNull(r.readNext());
+      assertNull(r.readNext());
     }
   }
 

@@ -3,6 +3,7 @@ package com.haoyuanj;
 import org.apache.commons.cli.*;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
@@ -35,9 +36,24 @@ public class Main {
     }
 
     File inputFile = new File(cmd.getOptionValue("f"));
-    List<IntervalMeteringData> data = null;
-    try (InputStream s = new FileInputStream(inputFile)) {
-      data = IntervalMeteringDataReader.read(s);
+    File outputFile = new File(cmd.getOptionValue("o"));
+    List<IntervalMeteringData> data = new ArrayList<>();
+    try (InputStream s = new FileInputStream(inputFile);
+        IntervalMeteringDataReader r = new IntervalMeteringDataReader(s);
+        BufferedWriter w = new BufferedWriter(new FileWriter(outputFile))) {
+      IntervalMeteringData d = r.readNext();
+      while (d != null) {
+        data.add(d);
+        // TODO: insert batching code
+        InsertStmtWriter.write(w, data);
+        data.clear();
+        d = r.readNext();
+      }
+      if (!data.isEmpty()) {
+        // Write last batch
+        // Note: batching is not implemented here :D
+        InsertStmtWriter.write(w, data);
+      }
     } catch (FileNotFoundException e) {
       e.printStackTrace();
       System.exit(1);
@@ -46,14 +62,7 @@ public class Main {
       System.exit(1);
     }
 
-    File outputFile = new File(cmd.getOptionValue("o"));
-    try (Writer w = new FileWriter(outputFile)) {
-      InsertStmtWriter.write(w, data);
-    } catch (IOException e) {
-      e.printStackTrace();
-      System.exit(1);
-    }
-
-    System.out.println("Insert statements have been written to output file " + outputFile.getPath());
+    System.out.println(
+        "Insert statements have been written to output file " + outputFile.getPath());
   }
 }
