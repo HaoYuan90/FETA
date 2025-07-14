@@ -46,10 +46,14 @@ public class Main {
       System.exit(1);
     }
 
-    for (IntervalMeteringData d : data) {
-      System.out.println(d);
+    File outputFile = new File(cmd.getOptionValue("o"));
+    try (Writer w = new FileWriter(outputFile)) {
+      InsertStmtWriter.write(w, data);
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.exit(1);
     }
 
-    // TODO: produce output
+    System.out.println("Insert statements have been written to output file " + outputFile.getPath());
   }
 }

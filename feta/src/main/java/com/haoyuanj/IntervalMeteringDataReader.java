@@ -21,7 +21,7 @@ public class IntervalMeteringDataReader {
     try (CSVReader r = new CSVReader(new BufferedReader(new InputStreamReader(in)))) {
       String[] cells = r.readNext();
       NmiContext context = null;
-      while(cells != null) {
+      while (cells != null) {
         int indicator = Integer.parseInt(cells[0]);
         switch (indicator) {
           case 100:
